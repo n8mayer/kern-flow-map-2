@@ -19,13 +19,12 @@ const INITIAL_VIEW_STATE: ViewState = {
 
 const MAP_STYLE = 'https://demotiles.maplibre.org/style.json';
 
-const KERN_RIVER_COLOR: [number, number, number, number] = [30, 144, 255, 255];
-const OTHER_FLOW_COLOR: [number, number, number, number] = [46, 139, 87, 255];
-const SELECTED_COLOR: [number, number, number, number] = [0, 255, 255, 255]; // Cyan for selected
-const DRY_FLOW_COLOR: [number, number, number, number] = [204, 204, 204, 102]; // #CCCCCC at 40% opacity
-const DEFAULT_OPACITY_VALUE = 0.8 * 255; // Renamed to avoid conflict with layer prop
-const SELECTED_OPACITY_VALUE = 255;
-
+import {
+  calculateLineWidthLogic,
+  determineFeatureColor,
+  // Constants are used internally by determineFeatureColor, no need to import them all here
+  // unless directly used for other purposes in MapPane.tsx.
+} from './MapPane.utils';
 
 // Interface for data passed to Deck.gl layers after processing
 interface ProcessedFlowFeature extends FlowFeature {
@@ -48,18 +47,9 @@ const MapPane: React.FC = () => {
     setViewState(params.viewState as Partial<ViewState>);
   }, []);
 
+  // getCalculatedLineWidth now calls the extracted logic
   const getCalculatedLineWidth = useCallback((flow: number | undefined, isSelected: boolean): number => {
-    // If flow is 0, width is explicitly 2px, regardless of selection.
-    if (flow === 0) {
-      return 2;
-    }
-    // Default width for non-dry flows or undefined flows
-    let width = 2;
-    if (flow !== undefined && flow !== null && !isNaN(flow)) { // flow !== 0 is already handled
-      const k = 0.1;
-      width = Math.min(Math.max(Math.sqrt(flow) * k, 2), 16);
-    }
-    return isSelected ? width + 2 : width; // Make selected lines slightly wider for non-dry flows
+    return calculateLineWidthLogic(flow, isSelected);
   }, []);
 
   const layers = useMemo(() => {
@@ -72,17 +62,8 @@ const MapPane: React.FC = () => {
       const isSelected = feature.id === selectedSectionId;
       const isRiver = feature.properties.type === 'river';
 
-      let finalColor: [number, number, number, number];
-
-      if (flowForYear === 0) {
-        finalColor = DRY_FLOW_COLOR;
-      } else {
-        let baseColor = isRiver ? KERN_RIVER_COLOR : OTHER_FLOW_COLOR;
-        if (isSelected) {
-          baseColor = SELECTED_COLOR;
-        }
-        finalColor = [baseColor[0], baseColor[1], baseColor[2], isSelected ? SELECTED_OPACITY_VALUE : DEFAULT_OPACITY_VALUE];
-      }
+      // Use the extracted color determination logic
+      const finalColor = determineFeatureColor(flowForYear, isSelected, isRiver);
 
       let srcPos: [number, number] | [number, number, number] = [0,0];
       let tgtPos: [number, number] | [number, number, number] = [0,0];

@@ -36,4 +36,4 @@ export const getAvailableYears = (): string[] => {
   return years;
 };
 
-export { MIN_YEAR, MAX_YEAR }; // Export constants for use in components
+export { MIN_YEAR, MAX_YEAR, DEFAULT_YEAR }; // Export constants for use in components

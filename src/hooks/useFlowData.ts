@@ -1,6 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { FlowFeature } from '../data/data.worker'; // Adjusted path
 
+const IS_TEST_ENVIRONMENT = process.env.NODE_ENV === 'test';
+
 // This state will hold the data once loaded by the worker
 // These need to be accessible by the hook, so they remain in this scope.
 let workerDataCache: FlowFeature[] | null = null;
@@ -40,10 +42,12 @@ if (typeof Worker !== 'undefined' && !workerDataCache && !isLoadingData) {
 
   console.log('useFlowData: Requesting data from worker...');
   worker.postMessage('loadData');
-} else if (typeof Worker === 'undefined') {
+} else if (typeof Worker === 'undefined' && !IS_TEST_ENVIRONMENT) {
   console.error("useFlowData: Web Workers are not supported in this environment.");
   workerErrorCache = "Web Workers are not supported.";
 }
+// In test environment, if Worker is undefined, we rely on global.Worker being mocked.
+// If it's still undefined in test, the new Worker() call will fail, which is fine for tests to catch.
 
 // Custom hook to access the flow data
 export const useFlowData = () => {

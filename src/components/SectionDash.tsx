@@ -74,9 +74,10 @@ const SectionDash: React.FC = () => {
     if (!sparklineData || sparklineData.length === 0 || !selectedYear) {
       return { vsPreviousYear: null, vsTenYearAverage: null, currentFlowDescription: 'N/A' };
     }
+    const numericSelectedYear = parseInt(selectedYear, 10);
 
-    const currentYearData = sparklineData.find(d => d.year === selectedYear);
-    const previousYearData = sparklineData.find(d => d.year === selectedYear - 1);
+    const currentYearData = sparklineData.find(d => d.year === numericSelectedYear);
+    const previousYearData = sparklineData.find(d => d.year === numericSelectedYear - 1);
 
     let vsPreviousYear: PercentageChange | null = null;
     if (currentYearData && previousYearData && previousYearData.flow > 0) {
@@ -89,15 +90,15 @@ const SectionDash: React.FC = () => {
     } else if (currentYearData && previousYearData && previousYearData.flow === 0 && currentYearData.flow > 0) {
        vsPreviousYear = { value: Infinity, direction: 'increase', label: t('sectionDash.badgeLabelVsPreviousFromZero', { year: selectedYear - 1 }) };
     } else {
-      vsPreviousYear = { value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsPrevious', { year: selectedYear - 1 }) };
+      vsPreviousYear = { value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsPrevious', { year: numericSelectedYear - 1 }) };
     }
 
-    const tenYearWindow = sparklineData.filter(d => d.year >= selectedYear - 10 && d.year < selectedYear);
+    const tenYearWindow = sparklineData.filter(d => d.year >= numericSelectedYear - 10 && d.year < numericSelectedYear);
     let vsTenYearAverage: PercentageChange | null = null;
     if (currentYearData && tenYearWindow.length > 0) {
       const sum = tenYearWindow.reduce((acc, curr) => acc + curr.flow, 0);
       const avg = sum / tenYearWindow.length;
-      const yearRange = `${selectedYear - 10}-${selectedYear - 1}`;
+      const yearRange = `${numericSelectedYear - 10}-${numericSelectedYear - 1}`;
       if (avg > 0) {
         const change = ((currentYearData.flow - avg) / avg) * 100;
         vsTenYearAverage = {
@@ -111,12 +112,12 @@ const SectionDash: React.FC = () => {
          vsTenYearAverage = { value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsTenYearAvg', { yearRange }) };
       }
     } else {
-       vsTenYearAverage = { value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsTenYearAvg', { yearRange: `${selectedYear - 10}-${selectedYear - 1}` }) };
+       vsTenYearAverage = { value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsTenYearAvg', { yearRange: `${numericSelectedYear - 10}-${numericSelectedYear - 1}` }) };
     }
 
     const currentFlowDescription = currentYearData
-      ? `${currentYearData.flow.toFixed(2)} ${t('overviewDash.acreFeetAbbreviation')} in ${selectedYear}`
-      : `${t('sectionDash.noData')} for ${selectedYear}`;
+      ? `${currentYearData.flow.toFixed(2)} ${t('overviewDash.acreFeetAbbreviation')} in ${numericSelectedYear}`
+      : `${t('sectionDash.noData')} for ${numericSelectedYear}`;
 
     return { vsPreviousYear, vsTenYearAverage, currentFlowDescription };
   }, [sparklineData, selectedYear, t]);
@@ -221,9 +222,8 @@ const SectionDash: React.FC = () => {
         </p>
         <h4 className="text-md font-semibold text-slate-500 mb-2">{t('sectionDash.comparisonBadgesTitle')}:</h4>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {percentageChanges.vsPreviousYear ? (
-            <Badge change={percentageChanges.vsPreviousYear ?? {value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsPrevious', { year: selectedYear -1 })}} t={t} />
-            <Badge change={percentageChanges.vsTenYearAverage ?? {value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsTenYearAvg', { yearRange: `${selectedYear - 10}-${selectedYear -1}` })}} t={t} />
+          <Badge change={percentageChanges.vsPreviousYear ?? {value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsPrevious', { year: Number(selectedYear) - 1 })}} t={t} />
+          <Badge change={percentageChanges.vsTenYearAverage ?? {value: 0, direction: 'unavailable', label: t('sectionDash.badgeLabelVsTenYearAvg', { yearRange: `${Number(selectedYear) - 10}-${Number(selectedYear) - 1}` })}} t={t} />
         </div>
       </div>
     </div>

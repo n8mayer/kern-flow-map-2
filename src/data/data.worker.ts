@@ -20,33 +20,44 @@ export interface FlowFeature {
 
 // Function to determine feature type based on filename or properties
 // This is a heuristic and might need adjustment based on actual data attributes
-const getFeatureType = (filePath: string, properties: Record<string, unknown>): 'river' | 'canal' | 'weir' => {
+export const getFeatureType = (filePath: string, properties: Record<string, unknown>): 'river' | 'canal' | 'weir' => {
   const lowerFilePath = filePath.toLowerCase();
-  if (lowerFilePath.includes('river')) {
-    return 'river';
-  }
-  if (lowerFilePath.includes('canal')) {
-    return 'canal';
-  }
+
+  // 1. Check for "point" or "weir" - these are most specific
   if (lowerFilePath.includes('point') || lowerFilePath.includes('weir')) {
     // Further check properties if available, e.g. a 'TYPE' field
     if (properties && properties.TYPE && String(properties.TYPE).toLowerCase() === 'weir') {
       return 'weir';
     }
-    return 'weir'; // Default for points if not specified
+    // If path indicates point/weir but TYPE property isn't 'weir', it's still a 'weir' by default for these paths
+    return 'weir';
   }
-  // Default, though ideally all files should match one of the above
-  return 'canal';
+
+  // 2. Then check for "canal"
+  if (lowerFilePath.includes('canal')) {
+    return 'canal';
+  }
+
+  // 3. Then check for "river"
+  if (lowerFilePath.includes('river')) {
+    return 'river';
+  }
+
+  // 4. Default for any other case
+  return 'canal'; // Defaulting to 'canal' as per original logic for non-matching paths
 };
 
 
-// Main data processing function
-async function loadAndProcessData(): Promise<FlowFeature[]> {
+// Extracted core logic for testability
+export async function fetchAndProcessDataForAllSources(
+  csvFilePath: string,
+  shapefileConfigs: { path: string; typeOverride: 'river' | 'weir' | null }[]
+): Promise<FlowFeature[]> {
   try {
-    console.log('Worker: Starting data load...');
+    console.log('Worker: Starting data load for testing...');
 
     // 1. Load CSV data
-    const csvResponse = await fetch('/0_KERN_RIVER_MASTER_DATA_rev6.csv');
+    const csvResponse = await fetch(csvFilePath);
     if (!csvResponse.ok) throw new Error(`Failed to fetch CSV: ${csvResponse.statusText}`);
     const csvText = await csvResponse.text();
     const parseResult = Papa.parse<FlowDataRow>(csvText, {
@@ -63,7 +74,7 @@ async function loadAndProcessData(): Promise<FlowFeature[]> {
     const flowDataMap = new Map<string, { [yyyy: string]: number }>();
     parseResult.data.forEach(row => {
       if (!row.MapID) {
-        // console.warn('Worker: Skipping CSV row with missing MapID:', row);
+        console.warn('Worker: Skipping CSV row with missing MapID:', row);
         return;
       }
       const flows: { [yyyy: string]: number } = {};
@@ -78,16 +89,10 @@ async function loadAndProcessData(): Promise<FlowFeature[]> {
     console.log(`Worker: Flow data map created. Entries: ${flowDataMap.size}`);
 
     // 2. Load shapefiles
-    const shapefilePaths: { path: string; typeOverride: 'river' | 'weir' | null }[] = [
-      { path: '/Canals_KernRiver_Merged_rev/Canals_KernRiver_Merged_rev.shp', typeOverride: null }, // will default to 'canal' via getFeatureType
-      { path: '/NHDStreamRiverKernRiver_rev/NHDStreamRiverKernRiver_rev.shp', typeOverride: 'river' },
-      { path: '/Points_Metro_Bak_Canals_Rev/Points_Metro_Bak_Canals_Rev.shp', typeOverride: 'weir' },
-    ];
-
     const allFeatures: FlowFeature[] = [];
 
-    for (const { path, typeOverride } of shapefilePaths) {
-      console.log(`Worker: Processing shapefile: ${path}`);
+    for (const { path, typeOverride } of shapefileConfigs) {
+      console.log(`Worker: Processing shapefile for testing: ${path}`);
       try {
         const [shpBuffer, dbfBuffer] = await Promise.all([
           fetch(path).then(res => { if (!res.ok) throw new Error(`SHP fetch failed: ${res.statusText}`); return res.arrayBuffer(); }),
@@ -112,13 +117,13 @@ async function loadAndProcessData(): Promise<FlowFeature[]> {
             }
 
             if (!mapId) {
-              // console.warn(`Worker: Feature in ${path} missing MapID. Properties:`, feature.properties);
+              console.warn(`Worker: Feature in ${path} missing MapID. Properties:`, feature.properties);
               return; // Skip if no MapID
             }
 
             const sectionFlows = flowDataMap.get(mapId);
             if (!sectionFlows) {
-              // console.warn(`Worker: No flow data found for MapID ${mapId} from ${path}. Assigning empty flows.`);
+              console.warn(`Worker: No flow data found for MapID ${mapId} from ${path}. Assigning empty flows.`);
               // It's possible some geo features don't have corresponding CSV entries.
               // Assign empty flows or handle as per requirements. For now, empty flows.
             }
@@ -164,7 +169,7 @@ async function loadAndProcessData(): Promise<FlowFeature[]> {
                 },
               });
             } else {
-              // console.warn(`Worker: Feature for MapID ${mapId} has unsupported geometry type: ${feature.geometry?.type}. Skipping.`);
+              console.warn(`Worker: Feature for MapID ${mapId} has unsupported geometry type: ${feature.geometry?.type}. Skipping.`);
             }
           });
         }
@@ -176,19 +181,34 @@ async function loadAndProcessData(): Promise<FlowFeature[]> {
     console.log('Worker: All data processed. Total features:', allFeatures.length);
     return allFeatures;
   } catch (error) {
-    console.error('Worker: Error in loadAndProcessData:', error);
-    throw error; // Re-throw to be caught by the onmessage handler
+    console.error('Worker: Error in fetchAndProcessDataForAllSources:', error);
+    throw error;
   }
 }
 
+// Original function that the worker will call
+async function loadAndProcessData(): Promise<FlowFeature[]> {
+  const csvFilePath = '/0_KERN_RIVER_MASTER_DATA_rev6.csv';
+  const shapefilePathsConfig = [
+    { path: '/Canals_KernRiver_Merged_rev/Canals_KernRiver_Merged_rev.shp', typeOverride: null },
+    { path: '/NHDStreamRiverKernRiver_rev/NHDStreamRiverKernRiver_rev.shp', typeOverride: 'river' },
+    { path: '/Points_Metro_Bak_Canals_Rev/Points_Metro_Bak_Canals_Rev.shp', typeOverride: 'weir' },
+  ];
+  return fetchAndProcessDataForAllSources(csvFilePath, shapefilePathsConfig);
+}
+
 // Listen for messages from the main thread
-self.onmessage = async (event) => {
-  if (event.data === 'loadData') {
-    try {
-      const processedData = await loadAndProcessData();
-      self.postMessage({ type: 'dataLoaded', payload: processedData });
-    } catch (error) {
-      self.postMessage({ type: 'dataError', payload: (error as Error).message });
+// Ensure 'self' is defined or polyfilled for test environment if this part is tested.
+// For now, we are testing fetchAndProcessDataForAllSources directly.
+if (typeof self !== 'undefined' && self.onmessage !== undefined) {
+  self.onmessage = async (event) => {
+    if (event.data === 'loadData') {
+      try {
+        const processedData = await loadAndProcessData();
+        self.postMessage({ type: 'dataLoaded', payload: processedData });
+      } catch (error) {
+        self.postMessage({ type: 'dataError', payload: (error as Error).message });
+      }
     }
-  }
-};
+  };
+}
