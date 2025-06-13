@@ -5,11 +5,19 @@ import TimeBar from './components/TimeBar'; // Added import
 import SectionDash from './components/SectionDash'; // Added import
 import OverviewDash from './components/OverviewDash'; // Added import
 import URLStateSync from './routing/URLStateSync'; // Added import
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 
 // Placeholders for components - Assuming these are defined or imported elsewhere
 // For simplicity, defining them here if not already.
 // Ensure these definitions are consistent with your actual component structure.
-const Header = () => <header style={{padding: '10px', backgroundColor: '#f0f0f0', textAlign: 'center'}}>Kern Flow</header>;
+const Header = () => {
+  const { t } = useTranslation();
+  return (
+    <header className="text-2xl font-bold p-4 bg-slate-200 text-center shadow-md">
+      {t('app.headerTitle')}
+    </header>
+  );
+};
 
 // Mock components for SectionDash, etc.
 // In a real app, these would be imported from './components/...'
@@ -17,24 +25,39 @@ const Header = () => <header style={{padding: '10px', backgroundColor: '#f0f0f0'
 // const SectionDashPlaceholder = () => <div style={{ flex: 1, border: '1px solid #ccc', margin: '5px', backgroundColor: '#f9f9f9', padding: '10px' }}>SectionDash Placeholder</div>; // Removed
 // const OverviewDashPlaceholder = () => <div style={{ flex: 1, border: '1px solid #ccc', margin: '5px', backgroundColor: '#f9f9f9', padding: '10px' }}>OverviewDash Placeholder</div>; // Removed
 // const TimeBarPlaceholder = () => <div style={{ border: '1px solid #ccc', margin: '5px', padding: '10px', backgroundColor: '#e9e9e9', textAlign: 'center' }}>TimeBar Placeholder</div>; // Removed
-const LeftRailPlaceholder = () => <div style={{ width: '120px', borderRight: '1px solid #ccc', margin: '5px', backgroundColor: '#f0f0f0', padding: '10px' }}>Left Rail</div>;
+
+// Define LeftRail component
+const LeftRail: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  return (
+    <div className="w-96 bg-slate-50 p-3 flex flex-col overflow-y-auto shadow-lg">
+      {/* Using w-96 for a fixed width, slate-50 for background, padding, flex-col, scroll, shadow */}
+      {children}
+    </div>
+  );
+};
 
 
 function AppContent() {
   // This component will now have access to useFlowData hook
   return (
-    <div className="app-container" style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+    // app-container
+    <div className="flex flex-col h-screen">
       <Header />
-      <div className="main-content" style={{ display: 'flex', flexDirection: 'column', flexGrow: 1, overflow: 'hidden' }}>
-        <MapPane /> {/* Replaced placeholder */}
-        <div className="bottom-area" style={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-          <LeftRailPlaceholder />
-          <div className="dashboards" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
-            <SectionDash /> {/* Replaced placeholder */}
-            <OverviewDash /> {/* Replaced placeholder */}
+      {/* main-content */}
+      <div className="flex flex-col flex-grow overflow-hidden">
+        {/* bottom-area */}
+        <div className="flex flex-grow overflow-hidden">
+          {/* MapPane will take flex-grow. Assuming MapPane's root div can take className. */}
+          <div className="flex-grow"> {/* Wrapper for MapPane to ensure flex-grow applies correctly */}
+            <MapPane />
           </div>
+          {/* LeftRail will contain SectionDash and OverviewDash */}
+          <LeftRail>
+            <SectionDash />
+            <OverviewDash />
+          </LeftRail>
         </div>
-        <TimeBar /> {/* Replaced placeholder */}
+        <TimeBar /> {/* TimeBar remains at the bottom of main-content */}
       </div>
     </div>
   );

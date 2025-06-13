@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 import Map, { ViewState } from 'react-map-gl/maplibre';
 import DeckGL from '@deck.gl/react';
 import { FlyToInterpolator, type ViewStateChangeParameters, type PickingInfo } from '@deck.gl/core'; // Added PickingInfo
-import { LineLayer } from '@deck.gl/layers';
+import { LineLayer, TextLayer } from '@deck.gl/layers'; // Import TextLayer
 import { useFlowData } from '../hooks/useFlowData';
 import type { FlowFeature } from '../data/data.worker';
 import { useAppStore } from '../store/store'; // Added Zustand store import
@@ -22,6 +22,7 @@ const MAP_STYLE = 'https://demotiles.maplibre.org/style.json';
 const KERN_RIVER_COLOR: [number, number, number, number] = [30, 144, 255, 255];
 const OTHER_FLOW_COLOR: [number, number, number, number] = [46, 139, 87, 255];
 const SELECTED_COLOR: [number, number, number, number] = [0, 255, 255, 255]; // Cyan for selected
+const DRY_FLOW_COLOR: [number, number, number, number] = [204, 204, 204, 102]; // #CCCCCC at 40% opacity
 const DEFAULT_OPACITY_VALUE = 0.8 * 255; // Renamed to avoid conflict with layer prop
 const SELECTED_OPACITY_VALUE = 255;
 
@@ -32,6 +33,7 @@ interface ProcessedFlowFeature extends FlowFeature {
   calculatedColor: [number, number, number, number];
   sourcePosition: [number, number] | [number, number, number];
   targetPosition: [number, number] | [number, number, number];
+  midPoint: [number, number] | [number, number, number]; // Added for TextLayer
 }
 
 const MapPane: React.FC = () => {
@@ -47,12 +49,17 @@ const MapPane: React.FC = () => {
   }, []);
 
   const getCalculatedLineWidth = useCallback((flow: number | undefined, isSelected: boolean): number => {
+    // If flow is 0, width is explicitly 2px, regardless of selection.
+    if (flow === 0) {
+      return 2;
+    }
+    // Default width for non-dry flows or undefined flows
     let width = 2;
-    if (flow !== undefined && flow !== null && !isNaN(flow) && flow !== 0) {
+    if (flow !== undefined && flow !== null && !isNaN(flow)) { // flow !== 0 is already handled
       const k = 0.1;
       width = Math.min(Math.max(Math.sqrt(flow) * k, 2), 16);
     }
-    return isSelected ? width + 2 : width; // Make selected lines slightly wider
+    return isSelected ? width + 2 : width; // Make selected lines slightly wider for non-dry flows
   }, []);
 
   const layers = useMemo(() => {
@@ -65,28 +72,40 @@ const MapPane: React.FC = () => {
       const isSelected = feature.id === selectedSectionId;
       const isRiver = feature.properties.type === 'river';
 
-      let baseColor = isRiver ? KERN_RIVER_COLOR : OTHER_FLOW_COLOR;
-      if (isSelected) {
-        baseColor = SELECTED_COLOR;
-      }
+      let finalColor: [number, number, number, number];
 
-      const finalColor: [number,number,number,number] = [baseColor[0], baseColor[1], baseColor[2], isSelected ? SELECTED_OPACITY_VALUE : DEFAULT_OPACITY_VALUE];
+      if (flowForYear === 0) {
+        finalColor = DRY_FLOW_COLOR;
+      } else {
+        let baseColor = isRiver ? KERN_RIVER_COLOR : OTHER_FLOW_COLOR;
+        if (isSelected) {
+          baseColor = SELECTED_COLOR;
+        }
+        finalColor = [baseColor[0], baseColor[1], baseColor[2], isSelected ? SELECTED_OPACITY_VALUE : DEFAULT_OPACITY_VALUE];
+      }
 
       let srcPos: [number, number] | [number, number, number] = [0,0];
       let tgtPos: [number, number] | [number, number, number] = [0,0];
+      let midPos: [number, number] | [number, number, number] = [0,0];
 
       if (feature.geometry.type === 'LineString' && feature.geometry.coordinates.length > 0) {
         srcPos = feature.geometry.coordinates[0] as [number, number] | [number, number, number];
         tgtPos = feature.geometry.coordinates[feature.geometry.coordinates.length - 1] as [number, number] | [number, number, number];
+        // Calculate midpoint for LineString
+        const midIndex = Math.floor(feature.geometry.coordinates.length / 2);
+        midPos = feature.geometry.coordinates[midIndex] as [number, number] | [number, number, number];
       } else if (feature.geometry.type === 'Point') {
-        srcPos = feature.geometry.coordinates as [number, number] | [number, number, number];
-        tgtPos = feature.geometry.coordinates as [number, number] | [number, number, number];
+        const pointCoords = feature.geometry.coordinates as [number, number] | [number, number, number];
+        srcPos = pointCoords;
+        tgtPos = pointCoords;
+        midPos = pointCoords; // Midpoint for a point is its own position
       }
 
       return {
         ...feature,
         sourcePosition: srcPos,
         targetPosition: tgtPos,
+        midPoint: midPos, // Store calculated midpoint
         calculatedWidth: getCalculatedLineWidth(flowForYear, isSelected),
         calculatedColor: finalColor,
       };
@@ -140,7 +159,22 @@ const MapPane: React.FC = () => {
       },
     });
 
-    return [lines];
+    const textLabels = new TextLayer<ProcessedFlowFeature>({
+      id: 'text-labels-layer',
+      data: processedLayerData,
+      getPosition: d => d.midPoint,
+      getText: d => d.properties.name,
+      getSize: 12,
+      getColor: [255, 255, 255, 255], // White text
+      getOutlineColor: [0, 0, 0, 255], // Black halo
+      outlineWidth: 2, // Halo thickness in pixels
+      fontSettings: {
+        sdf: true, // Use SDF for better rendering with outline
+      },
+      pickable: false, // Labels not pickable
+    });
+
+    return [lines, textLabels]; // Add text layer to the map
 
   }, [flowFeatures, isLoading, selectedYear, selectedSectionId, setSelectedSectionId, getCalculatedLineWidth]); // Removed INITIAL_VIEW_STATE.zoom
 
@@ -149,8 +183,10 @@ const MapPane: React.FC = () => {
   if (!flowFeatures) return <div style={{padding: '20px', textAlign: 'center', color: 'orange'}}>No flow features loaded.</div>;
   if (flowFeatures.length === 0) return <div style={{padding: '20px', textAlign: 'center', color: 'purple'}}>Flow features loaded, but the array is empty.</div>;
 
+  // Use Tailwind CSS for responsive height: h-[40vh] for mobile (default), md:h-[60vh] for desktop
+  // Removed debug border.
   return (
-    <div style={{ position: 'relative', width: '100%', height: '60vh', border: '1px dashed blue' }}>
+    <div className="h-[40vh] md:h-[60vh]" style={{ position: 'relative', width: '100%' }}>
       <DeckGL
         layers={layers}
         initialViewState={INITIAL_VIEW_STATE}
@@ -162,12 +198,25 @@ const MapPane: React.FC = () => {
           // Use hoverInfo.object for consistent data, as 'object' might be a subset or different instance
           const feature = hoverInfo.object;
           const flow = feature.properties.flows[selectedYear];
+          // Style the tooltip to be more consistent with a Radix-like theme (dark, rounded)
+          // Direct Radix component integration is complex with deck.gl's getTooltip expecting HTML/style object.
           return {
-            html: `              <div style="background-color: white; color: black; padding: 5px; border-radius: 3px; fontFamily: 'sans-serif', fontSize: '0.9em'">
-                <strong>${feature.properties.name}</strong><br/>
-                Flow: ${flow !== undefined ? flow.toFixed(2) + ' af (Jan ' + selectedYear + ')' : 'N/A'}
-              </div>`,
-            style: { backgroundColor: 'transparent', boxShadow: 'none' }
+            html: `
+              <div style="font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji'; font-size: 0.875rem; /* text-sm */">
+                <strong style="font-weight: 600; /* font-semibold */ color: #E2E8F0; /* slate-200 */">${feature.properties.name}</strong>
+                <br/>
+                <span style="color: #CBD5E1; /* slate-300 */">Flow: ${flow !== undefined ? flow.toFixed(2) + ' af (Jan ' + selectedYear + ')' : 'N/A'}</span>
+              </div>
+            `,
+            style: {
+              backgroundColor: 'rgba(30, 41, 59, 0.9)', // bg-slate-800 with opacity
+              padding: '8px 12px', // p-2 or p-3 like
+              borderRadius: '6px', // rounded-md
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', // shadow-lg
+              color: 'white', // Default text color (though overridden above)
+              // Prevent map interaction issues by ensuring pointer events are 'none' for the tooltip itself
+              // This is often handled by deck.gl by default, but explicit can be good.
+            }
           };
         }}
       >

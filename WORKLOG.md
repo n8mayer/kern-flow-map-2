@@ -87,9 +87,10 @@ This document tracks the plan and progress for building the Kern Flow dashboard.
 - [x] Initialize MapLibre GL JS (verified)
 - [x] Use deck.gl `LineLayer` (simplified, aiming for stable build)
 - [~] Implement visual encoding rules (simplified, pre-calculated)
-- [ ] Add persistent text labels (deferred)
+    - [x] Added specific rules for dry flows (0 flow rate): 2px width, #CCCCCC color at 40% opacity.
+- [x] Add persistent text labels at midpoints of lines (using Deck.gl TextLayer, white text with black halo).
 - [x] Implement click and hover interactions (basic done, Zustand for sectionId)
-- [ ] Ensure the map pane adjusts its size based on viewport dimensions (CSS needed)
+- [x] Ensure the map pane adjusts its size based on viewport dimensions (used Tailwind CSS for 40vh mobile, 60vh desktop).
 ### Step 4: Implement the TimeBar component
 - [x] Create a slider (Radix) and a dropdown menu (select) for year selection.
 - [x] Implement play/pause functionality for animating the year.
@@ -99,12 +100,12 @@ This document tracks the plan and progress for building the Kern Flow dashboard.
 - [x] Subscribe to `selectedSectionId` and `selectedYear` from the global store.
 - [x] Fetch and display data (name, type) for the selected section.
 - [~] Render a sparkline chart (1979-2021) using Vega-Lite (basic implementation done).
-- [ ] Display average flow by decade using bar charts (Vega-Lite) (placeholder added).
-- [ ] Show percentage change badges (placeholder added).
+- [x] Display average flow by decade using bar charts (Vega-Lite) (calculated decades 1980s-2020s, rendered with VegaLite).
+- [x] Show percentage change badges (vs. previous year and vs. 10-year average for selectedYear).
 ### Step 6: Implement the OverviewDash component
 - [x] Subscribe to `selectedYear` from the global store.
-- [x] Calculate and display KPI grid for the chosen year.
-- [~] Render system-wide charts over time using Vega-Lite (Total System Flow and River vs Canal implemented).
+- [x] Calculate and display KPI grid for the chosen year (e.g., total flow, % into canals).
+- [x] Render small multiple charts over time using Vega-Lite (achieved via two separate charts: Total System Flow and River vs Canal Flow over time).
 ### Step 7: Implement global state management (Zustand)
 - [x] Define the store in `store.ts` (selectedYear and selectedSectionId implemented)
 - [x] Provide actions to update these state variables (for selectedYear and selectedSectionId)
@@ -113,3 +114,19 @@ This document tracks the plan and progress for building the Kern Flow dashboard.
 - [x] Manually manage URL hash.
 - [x] Update URL hash when `selectedSectionId` or `selectedYear` changes.
 - [x] Parse URL hash on initial load to set the initial state.
+### Step 9: Style the application
+- [x] Refactored `App.tsx` layout to use Tailwind CSS.
+- [x] Implemented `Header` and `LeftRail` components with Tailwind CSS in `App.tsx`.
+- [x] Replaced native select in `TimeBar.tsx` with Radix UI `DropdownMenu`, styled with Tailwind CSS.
+- [x] Standardized styling in `SectionDash` and `OverviewDash` (padding, typography, chart/KPI containers).
+- [x] Reviewed `MapPane` styling for layout compatibility and removed debug border.
+- [x] Investigated Radix UI Tooltip for `MapPane`; improved existing HTML tooltip styling due to integration complexity.
+- [x] Ensured consistent font and color usage across the application (Tailwind defaults and theme colors).
+- [~] Apply Tailwind CSS classes to all components for layout and styling (ongoing, major components addressed).
+- [~] Use Radix UI components where specified (Dropdown, Slider, Tooltip) (partially done, Tooltip deferred for MapPane).
+- [ ] Ensure the application adheres to the visual design specified in the issue.
+### Step 10: Address non-functional requirements
+- [x] Set up basic i18n structure with `i18next` and `react-i18next`, created `en.json` with initial translations, and updated key components (`App`, `TimeBar`, `SectionDash`, `OverviewDash`) to use `useTranslation`.
+- [x] Set up Vite PWA plugin for basic offline support (configured `vite.config.ts`, added manifest icons, updated `index.html`).
+- [ ] Test for performance (initial load, animation FPS) and optimize if necessary.
+- [ ] Ensure WCAG 2.2 AA accessibility (keyboard navigation, contrast).
