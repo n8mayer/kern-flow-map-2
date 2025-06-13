@@ -1,0 +1,43 @@
+{
+  "app": {
+    "headerTitle": "Kern Flow"
+  },
+  "timebar": {
+    "play": "Play",
+    "pause": "Pause",
+    "year": "Year",
+    "selectYear": "Select Year"
+  },
+  "sectionDash": {
+    "sectionTitle": "Section: {{name}}",
+    "typeLabel": "Type",
+    "idLabel": "ID",
+    "flowTrendTitle": "Flow Trend (1979-2021)",
+    "avgFlowByDecadeTitle": "Average Flow by Decade",
+    "flowForYearTitle": "Flow for {{year}}",
+    "comparisonBadgesTitle": "Comparisons",
+    "badgeLabelVsPrevious": "vs {{year}}",
+    "badgeLabelVsPreviousFromZero": "vs {{year}} (from 0)",
+    "badgeLabelVsTenYearAvg": "vs {{yearRange}} avg.",
+    "badgeLabelVsTenYearAvgFromZero": "vs {{yearRange}} avg. (from 0)",
+    "noData": "N/A",
+    "noFlowDataForTrend": "No flow data available to display trend chart for this section.",
+    "notEnoughDataForDecades": "Not enough data spanning defined decades.",
+    "noFlowDataAvailable": "No flow data available.",
+    "loadingData": "Loading section data...",
+    "selectSectionPrompt": "Select a river or canal section on the map to see details."
+  },
+  "overviewDash": {
+    "systemOverviewTitle": "System Overview",
+    "kpisForYearTitle": "KPIs for {{year}}",
+    "totalSystemFlow": "Total System Flow",
+    "totalCanalFlow": "Total Canal Flow",
+    "percentageIntoCanals": "% Into Canals",
+    "acreFeetAbbreviation": "af",
+    "totalSystemFlowChartTitle": "Total System Flow (All Features)",
+    "riverVsCanalFlowChartTitle": "River vs. Canal Flow Over Time",
+    "flowTypeLabel": "Flow Type",
+    "noOverviewData": "No overview data available.",
+    "loadingOverviewData": "Loading overview data..."
+  }
+}

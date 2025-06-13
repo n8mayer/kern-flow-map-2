@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { VegaLite, VisualizationSpec } from 'react-vega';
 import { useAppStore, getAvailableYears } from '../store/store';
 import { useFlowData } from '../hooks/useFlowData'; // FlowFeature is implicitly used via useFlowData return type
+import { useTranslation } from 'react-i18next'; // Import useTranslation
 
 interface YearlyTotalFlow {
   year: number;
@@ -11,6 +12,7 @@ interface YearlyTotalFlow {
 }
 
 const OverviewDash: React.FC = () => {
+  const { t } = useTranslation(); // Initialize useTranslation
   const selectedYear = useAppStore((state) => state.selectedYear);
   const { data: flowFeatures, isLoading: isLoadingFlowData } = useFlowData();
   const availableYears = getAvailableYears();
@@ -72,12 +74,12 @@ const OverviewDash: React.FC = () => {
   }, [flowFeatures, availableYears]);
 
   if (isLoadingFlowData) {
-    return <div className="p-4 text-gray-600">Loading overview data...</div>;
+    return <div className="p-4 text-gray-600">{t('overviewDash.loadingOverviewData')}</div>;
   }
 
   const totalFlowChartSpec: VisualizationSpec | null = totalSystemFlowOverTime ? {
     $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-    title: 'Total System Flow (All Features)',
+    title: t('overviewDash.totalSystemFlowChartTitle'),
     width: 'container',
     height: 200,
     padding: 5,
@@ -96,7 +98,7 @@ const OverviewDash: React.FC = () => {
   // Optional: Second chart for river vs canal flow
   const riverCanalFlowChartSpec: VisualizationSpec | null = totalSystemFlowOverTime ? {
     $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
-    title: 'River vs. Canal Flow Over Time',
+    title: t('overviewDash.riverVsCanalFlowChartTitle'),
     width: 'container',
     height: 200,
     padding: 5,
@@ -106,11 +108,11 @@ const OverviewDash: React.FC = () => {
     ],
     mark: { type: 'line', point: false, tooltip: true, interpolate: 'monotone' },
     encoding: {
-      x: { field: 'year', type: 'temporal', timeUnit: 'year', axis: { title: 'Year', format: '%Y' } },
-      y: { field: 'flowValue', type: 'quantitative', axis: { title: 'Flow (acre-feet)' } },
-      color: { field: 'flowType', type: 'nominal', legend: { title: 'Flow Type' } },
+      x: { field: 'year', type: 'temporal', timeUnit: 'year', axis: { title: t('timebar.year'), format: '%Y' } }, // Reused timebar.year
+      y: { field: 'flowValue', type: 'quantitative', axis: { title: `${t('sectionDash.flowForYearTitle', {year: ''})} (${t('overviewDash.acreFeetAbbreviation')})` } }, // Combined keys
+      color: { field: 'flowType', type: 'nominal', legend: { title: t('overviewDash.flowTypeLabel') } },
       tooltip: [
-        { field: 'year', type: 'temporal', timeUnit: 'year', title: 'Year' },
+        { field: 'year', type: 'temporal', timeUnit: 'year', title: t('timebar.year') },
         { field: 'flowType', type: 'nominal', title: 'Type'},
         { field: 'flowValue', type: 'quantitative', title: 'Flow (af)', format: ',.0f' }
       ]
@@ -119,28 +121,30 @@ const OverviewDash: React.FC = () => {
 
 
   return (
-    <div className="p-4 h-full overflow-y-auto">
-      <h2 className="text-xl font-semibold mb-3 text-blue-700">System Overview</h2>
+    <div className="p-4 h-full overflow-y-auto space-y-6">
+      <h2 className="text-2xl font-semibold text-slate-700">{t('overviewDash.systemOverviewTitle')}</h2>
 
       {systemAggregatesForSelectedYear && (
-        <div className="mb-6 p-4 bg-white rounded shadow">
-          <h3 className="text-md font-medium text-gray-800 mb-2">KPIs for {selectedYear}</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-3 bg-blue-50 rounded">
-              <p className="text-sm text-blue-600">Total System Flow</p>
-              <p className="text-2xl font-bold text-blue-800">
-                {systemAggregatesForSelectedYear.totalSystemFlowForSelectedYear.toLocaleString(undefined, {maximumFractionDigits: 0})} <span className="text-sm font-normal">af</span>
+        <div className="p-3 bg-white rounded-lg shadow-md">
+          <h3 className="text-lg font-semibold text-slate-600 mb-3">{t('overviewDash.kpisForYearTitle', { year: selectedYear })}</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="p-3 bg-sky-50 rounded-lg">
+              <p className="text-sm font-medium text-sky-700">{t('overviewDash.totalSystemFlow')}</p>
+              <p className="text-2xl font-bold text-sky-900 mt-1">
+                {systemAggregatesForSelectedYear.totalSystemFlowForSelectedYear.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                <span className="text-xs font-normal text-slate-600 ml-1">{t('overviewDash.acreFeetAbbreviation')}</span>
               </p>
             </div>
-            <div className="p-3 bg-green-50 rounded">
-              <p className="text-sm text-green-600">Total Canal Flow</p>
-              <p className="text-2xl font-bold text-green-800">
-                {systemAggregatesForSelectedYear.totalCanalFlowForSelectedYear.toLocaleString(undefined, {maximumFractionDigits: 0})} <span className="text-sm font-normal">af</span>
+            <div className="p-3 bg-emerald-50 rounded-lg">
+              <p className="text-sm font-medium text-emerald-700">{t('overviewDash.totalCanalFlow')}</p>
+              <p className="text-2xl font-bold text-emerald-900 mt-1">
+                {systemAggregatesForSelectedYear.totalCanalFlowForSelectedYear.toLocaleString(undefined, {maximumFractionDigits: 0})}
+                <span className="text-xs font-normal text-slate-600 ml-1">{t('overviewDash.acreFeetAbbreviation')}</span>
               </p>
             </div>
-            <div className="p-3 bg-indigo-50 rounded">
-              <p className="text-sm text-indigo-600">% Into Canals</p>
-              <p className="text-2xl font-bold text-indigo-800">
+            <div className="p-3 bg-violet-50 rounded-lg">
+              <p className="text-sm font-medium text-violet-700">{t('overviewDash.percentageIntoCanals')}</p>
+              <p className="text-2xl font-bold text-violet-900 mt-1">
                 {systemAggregatesForSelectedYear.percentageIntoCanals.toFixed(1)}%
               </p>
             </div>
@@ -149,19 +153,19 @@ const OverviewDash: React.FC = () => {
       )}
 
       {totalFlowChartSpec && (
-        <div className="mb-6 bg-white p-2 rounded shadow">
+        <div className="bg-white p-3 rounded-lg shadow-md">
           <VegaLite spec={totalFlowChartSpec} actions={false} />
         </div>
       )}
 
       {riverCanalFlowChartSpec && (
-        <div className="bg-white p-2 rounded shadow">
+        <div className="bg-white p-3 rounded-lg shadow-md">
           <VegaLite spec={riverCanalFlowChartSpec} actions={false} />
         </div>
       )}
 
       {!systemAggregatesForSelectedYear && !totalSystemFlowOverTime && !isLoadingFlowData && (
-         <p className="text-gray-500">No overview data available.</p>
+         <p className="text-gray-500">{t('overviewDash.noOverviewData')}</p>
       )}
     </div>
   );
